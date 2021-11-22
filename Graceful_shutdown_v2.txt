@@ -1,0 +1,63 @@
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"github.com/gorilla/mux"
+	"net/http"
+	"os"
+	"os/signal"
+	"time"
+)
+
+var(
+	Port string
+)
+
+func main(){
+
+	flag.StringVar(&Port,"port",":5000","Port Value")
+	flag.Parse()
+	server := new(http.Server)
+	Srv := CreateServer(server)
+
+	quit := make(chan os.Signal)
+	signal.Notify(quit,os.Interrupt)
+	
+
+	go GracefulShutdown(quit,Srv)
+
+	err := Srv.ListenAndServe()
+
+	if err != nil{
+		panic(err.Error())
+	}
+
+
+}
+
+func GracefulShutdown(quit chan os.Signal,srv *http.Server){
+
+	fmt.Println(<-quit,"Recieved from command line")
+
+	ctx,cancel := context.WithTimeout(context.Background(),time.Second*3)
+	defer cancel()
+
+	err := srv.Shutdown(ctx)
+	if err != nil{
+		panic(err.Error())
+	}
+
+}
+
+func CreateServer(server *http.Server) *http.Server {
+
+	return &http.Server{
+		Handler: mux.NewRouter(),
+		Addr: Port,
+		IdleTimeout: 10*time.Second,
+		WriteTimeout: 10*time.Second,
+		ReadTimeout: 10*time.Second,
+	}
+}
