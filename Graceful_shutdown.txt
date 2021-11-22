@@ -1,0 +1,73 @@
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"github.com/gorilla/mux"
+	"net/http"
+	"os"
+	"os/signal"
+	"time"
+)
+
+var (
+	listenaddr string
+)
+
+func main(){
+     flag.StringVar(&listenaddr,"listen-addr",":5000","Server listen address")
+	 flag.Parse()
+	 fmt.Println("server is ready to listen at ",listenaddr)
+
+	 server := new(http.Server)
+	 router := mux.NewRouter()
+	 server.Addr = listenaddr
+	 server.Handler = router
+	 server.ReadTimeout = 10*time.Second
+	 server.WriteTimeout = 10*time.Second
+	 server.IdleTimeout = 10*time.Second
+
+	done := make(chan bool)
+	quit := make(chan os.Signal)
+
+	fmt.Println("Done channel :",done)
+	fmt.Println("Quit channel :",quit)
+
+	signal.Notify(quit,os.Interrupt)
+
+	fmt.Println("starting graceful shutdown go routine")
+
+	 go gracefulshutdown(server,done,quit)
+
+	fmt.Println("Starting listen and serve")
+
+	 err := server.ListenAndServe()
+
+	fmt.Println("checking listen and serve errors")
+	 if err != nil{
+		 fmt.Println("Server stopped ",err.Error())
+	 }
+
+	 <-done
+
+}
+
+func gracefulshutdown(server *http.Server,d chan bool,q chan os.Signal){
+
+     fmt.Println("force stop issued :")
+	 <-q
+     fmt.Println("Server is shutting down")
+
+	 ctx,cancel := context.WithTimeout(context.Background(),time.Second*3)
+	 defer cancel()
+
+	 server.SetKeepAlivesEnabled(false)
+
+     err := server.Shutdown(ctx)
+	 if err != nil{
+		 fmt.Println("could not gracefully shutdown the server")
+	 }
+
+	 d<-true
+}
