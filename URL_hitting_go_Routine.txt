@@ -1,0 +1,39 @@
+package main
+
+import (
+	"fmt"
+	"net/http"
+)
+
+func main(){
+
+	input := []string{
+		"http://www.google.com",
+		"http://www.yahoo.com",
+		"http://www.stackoverflow.com",
+		"http://www.cognizant.com",
+	}
+
+	c := make(chan string)
+
+	for _,link := range input{
+		go checkLink(c,link)
+	}
+
+	for l := range c{
+		go checkLink(c,l)
+	}
+
+}
+
+func checkLink(c chan string,link string){
+	_, err := http.Get(link)
+
+	if err != nil{
+		c <- link
+		fmt.Println("Link is down",link)
+	}
+    fmt.Println("Link is up",link)
+    c <- link
+
+}
