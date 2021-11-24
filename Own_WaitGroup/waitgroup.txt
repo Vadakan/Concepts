@@ -1,0 +1,29 @@
+package WaitGroup
+
+type WaitGroup struct{
+	N int
+	Waitc chan struct{}
+}
+
+func GetWaitGroup() *WaitGroup{
+
+	return &WaitGroup{
+		N : 0,
+		Waitc : make(chan struct{}),
+	}
+}
+
+func(wg *WaitGroup) Add(n int){
+	wg.N = wg.N + n
+}
+
+func(wg *WaitGroup) Done(){
+	wg.Waitc <- struct{}{}
+}
+
+func(wg *WaitGroup) Wait(){
+	defer close(wg.Waitc)
+	for i:=0;i<wg.N;i++{
+		<-wg.Waitc
+	}
+}
